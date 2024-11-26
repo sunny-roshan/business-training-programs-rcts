@@ -1,0 +1,94 @@
+library(dplyr)
+library(tidyr)
+library(haven)
+install.packages("labelled")
+library(labelled)
+
+Tanzania <- read_dta("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/Data for thesis/Business Training Data available/Berge et al Tanzania/mnsc/DataBBT2014.dta")
+View(Tanzania)
+
+# Let's have a look at treatment status. The numbers match what the paper says.
+table(Tanzania$dtreat) # 319 were offered training, incl training only and training + grant
+table(Tanzania$bg) # 252 were offered grant, incl grant only and training + grant
+table(Tanzania$trainonly) # 193 were offered training only
+table(Tanzania$bgonly) # 126 were offered grant only  
+table(Tanzania$dtreat_bg) # 126 were offered both training and grant  
+table(Tanzania$trainonly, Tanzania$male)
+
+# How many missing entries for profits exist?
+sum(is.na(Tanzania$lnisoprofit0911f))
+sum(is.na(Tanzania$lnisoprofit09f))
+sum(is.na(Tanzania$lnisoprofit11f))
+# There are 42 profit NAs for the average taken over the two follow-up surveys, in 644 observations. 
+
+# What about for sales?
+sum(is.na(Tanzania$lnisales09f))
+sum(is.na(Tanzania$lnisales11f))
+sum(is.na(Tanzania$lnisales0911f))
+# Exactly the same for sales - 42 NAs in the 'average over 2009 and 2011' variable.
+
+# Dropping them.
+Tanzania <- Tanzania %>% filter(!is.na(lnisales0911f))
+
+# Now let's convert the sales and profits variables from natural log to real currency, in new vars.
+# I know the logs are ln base e not base 10 otherwise the earnings would be in the gazillions
+Tanzania <- Tanzania %>% mutate(sales0911 = (exp(lnisales0911f))/1000,
+                                profits0911 = (exp(lnisoprofit0911f))/1000)
+
+# Drop the observations in the grant group, incl grant only and training + grant.
+Tanzania <- filter(Tanzania, bg == 0)
+# Just checking that we now have a clean control - training treatment distinction. We do.
+table(Tanzania$dtreat_bg)
+table(Tanzania$dtreat)
+table(Tanzania$trainonly) # After dropping NAs there are 182 in training group and 179 in control.
+
+# The authors reported results separately for males and females and McK lifted this. 
+# I'm not doing the same.
+table(Tanzania$male) # The 2 gender dummies are just the inverse of each other
+table(Tanzania$female) # There are 122 men and 239 women
+
+# What we want to do is: calculate the mean and sd of (profits0911) and (sales0911),
+# as well as the baseline values (sales08a) and (soprofit08a), only for the control group.
+
+# We're splitting the dataset Tanzania by treatment status and then generating
+# the average and sd of profits and sales, and storing them in a new df:
+Standardisation_vars_Tanzania <- group_by(Tanzania, dtreat) %>% 
+  summarize(avgprofits = mean(profits0911), sdprofits = sd(profits0911),
+            avgrevenue = mean(sales0911), sdrevenue = sd(sales0911),
+            avgbaselineprofits = mean(soprofit08a), sdbaselineprofits = sd(soprofit08a),
+            avgbaselinerevenue = mean(sales08a), sdbaselinerevenue = sd(sales08a))
+View(Standardisation_vars_Tanzania)
+
+# We only need the means and sd of the control group, and so can drop the values for the training group
+# and then drop the column of treatment status:
+Standardisation_vars_Tanzania <- filter(Standardisation_vars_Tanzania, dtreat == 0)
+View(Standardisation_vars_Tanzania)
+Standardisation_vars_Tanzania <- Standardisation_vars_Tanzania[-1]
+
+# Now we can merge the 'Standardisation_vars_Tanzania' dataset to the full Tanzania dataset using crossing from tidyr 
+# since there are no common variables to join by
+Tanzania_clean <- crossing(Tanzania, Standardisation_vars_Tanzania)
+View(Tanzania_clean)
+
+# Now the key transformation! z-scores, standardising the profits by the control mean and control sd:
+Tanzania_clean <- Tanzania_clean %>% mutate(Profit_zscore = (profits0911 - avgprofits)/sdprofits,
+                                            Revenue_zscore = (sales0911 - avgrevenue)/sdrevenue,
+                                            Baseline_Profit_z = (soprofit08a - avgbaselineprofits)/sdbaselineprofits,
+                                            Baseline_Revenue_z = (sales08a - avgbaselinerevenue)/sdbaselinerevenue) 
+
+Tanzania_clean <- Tanzania_clean %>% set_variable_labels(profits0911 = NULL, sales0911 = NULL,
+                                      Profit_zscore = NULL, Revenue_zscore = NULL,
+                                      Baseline_Profit_z = NULL, Baseline_Revenue_z = NULL)
+
+# Now we can drop most columns - they may be used as controls to replicate the regressions, if you want to use
+# the Bandiera et al. method; but if we want to combine the datasets' individual observations in the 
+# Meager (2019) method, the controls won't be the same across datasets so probably droppable.
+Tanzania_clean <- Tanzania_clean %>% select(female, dtreat, Profit_zscore, Revenue_zscore,
+                                            Baseline_Profit_z, Baseline_Revenue_z)
+Tanzania_clean <- rename(Tanzania_clean, treatment_indicator = dtreat)
+Tanzania_clean <- Tanzania_clean %>% mutate(urban = 1, group = "Tanzania")
+Tanzania_clean <- Tanzania_clean %>% relocate(female, .after = urban)
+View(Tanzania_clean)
+
+#export df
+write.table(Tanzania_clean, file = "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Tanzania.csv", sep=",", row.names=FALSE)
