@@ -83,11 +83,11 @@ Tanzania_clean <- Tanzania_clean %>% set_variable_labels(profits0911 = NULL, sal
                                       Baseline_Profit_z = NULL, Baseline_Revenue_z = NULL)
 
 # Drop unnecessary variables - they may be used as controls to replicate the regressions in the Bandiera et al. method; but if we want to combine the datasets' individual observations in the Meager (2019) method, the controls won't be the same across datasets, so probably droppable.
-Tanzania_clean <- Tanzania_clean %>% select(female, dtreat, Profit_zscore, Revenue_zscore,
-                                            Baseline_Profit_z, Baseline_Revenue_z)
-Tanzania_clean <- rename(Tanzania_clean, treatment_indicator = dtreat)
-Tanzania_clean <- Tanzania_clean %>% mutate(urban = 1, group = "Tanzania")
-Tanzania_clean <- Tanzania_clean %>% relocate(female, .after = urban)
+Tanzania_clean <- Tanzania_clean %>% 
+  select(female, dtreat, Profit_zscore, Revenue_zscore, Baseline_Profit_z, Baseline_Revenue_z) %>% 
+  rename(treatment_indicator = dtreat) %>% 
+  mutate(urban = 1, group = "Tanzania") %>% 
+  relocate(female, .after = urban)
 View(Tanzania_clean)
 
 # export
