@@ -1,8 +1,7 @@
+# Load libraries
 library(baggr)
 vignette('baggr')
 library(xtable)
-options(xtable.floating = FALSE)
-options(xtable.timestamp = "")
 library(ggplot2)
 library(rstan)
 library(stargazer)
@@ -11,11 +10,23 @@ library(scales)
 install.packages('extraDistr')
 library(extraDistr)
 
-##### 
+# Set options
+options(xtable.floating = FALSE)
+options(xtable.timestamp = "")
 
+# Set loc
 setwd("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Sales output")
 
-# Only summary data, all 18:
+# define a function that backs out standard errors from frequentist 95% confidence intervals
+compute_se <- function(mean, CI_upperbound, CI_lowerbound) {
+  std_error <- (((CI_upperbound - mean)/1.96) + (mean - CI_lowerbound)/1.96)/2
+  return(std_error)
+}
+
+# First, fit models using summary statistics (effect size and CI/se) only. We have these for 18 studies
+# Later, fit models with covariates for the studies with public datasets
+
+# Manually create df of effect sizes (tau) and std errors:
 group <- c("Avdeenko et al. (2019)", "Anderson and McKenzie (2020)",
            "Alibhai et al. (2019)", "Brooks et al. (2018)", "Campos et al. (2017)",
            "Bakhtiar et al. (2021)", "Chong and Velez (2020)", "Anderson et al. (2018) (Finance)",
@@ -25,53 +36,60 @@ group <- c("Avdeenko et al. (2019)", "Anderson and McKenzie (2020)",
            "Giné and Mansuri (2020)", "Drexler et al. (2014) (Accounting)",
            "Karlan and Valdivia (2011)")
 
-# function for backing out s.e.s from classical 95% C.I.'s
-compute_se <- function(mean, CI_upperbound, CI_lowerbound) {
-  s_e <- (((CI_upperbound - mean)/1.96) + (mean - CI_lowerbound)/1.96)/2
-  return(s_e)
-}
 tau <- c(-0.99, 20.73, -0.89, 3.32, 5.59, 62.20, 35.8, 25.32, 64.43, 28.78, -14.11, 38.9, 16.88, 12.98, -0.5, -2.86, -7.8, 1)
 CIupper <- c(20.2, 70.25, 25.46, 18.18, 22.24, 109.86, 76.18, 56.53, 111.03, 61.35, 40.27, 86.96, 38.34, 54.89, 27.7, 14.08, 10.37, 11.4)
 CIlower <- c(-18.45, -28.8, -27.24, -11.53, -11.05, 14.54, -4.58, -5.9, 17.84, 2.8, -68.49, -9.14, -1.25, -17.6, -22.47, -17.28, -26.03, -8.42)
-se <- compute_se(tau,CIupper,CIlower)
+se <- compute_se(tau, CIupper, CIlower)
 
-Sales <- data.frame(group,tau,se)
+Sales <- data.frame(group, tau, se)
 Sales
 
-# model 1 - uniform prior sd and default mean, only summary data, no covariates
+# Three BHM models using summary stats (without covariates) with different priors for the mean and standard deviation of the effect size:
+# 1: normal N(0,100) mean and wide uniform sd
+# 2: normal N(0,100) mean and Cauchy(0,25) sd
+# 3: narrower normal N(0,75) mean and narrower Cauchy(0,15) sd
+
+# Model 1 - uniform prior sd and default mean
 defaultvarpiorlimit <- 10*sd(tau)
 defaultvarpiorlimit
-
-Sales_BHM_1 <- baggr(Sales, model = "rubin", pooling = "partial",
+Sales_BHM_1 <- baggr(data = Sales, 
+                     model = "rubin", 
+                     pooling = "partial",
                      prior_hypermean = normal(0,100), 
                      prior_hypersd = uniform(0,228), 
-                     iter = 20000, chains = 8, control = list(adapt_delta = 0.95))
+                     iter = 20000, 
+                     chains = 8, 
+                     control = list(adapt_delta = 0.95))
 print(Sales_BHM_1)
 
-# model 2 - Cauchy (0,25) prior. 
-Sales_BHM_2 <- baggr(Sales, model = "rubin", pooling = "partial",
-                     prior_hypermean = normal(0,100), prior_hypersd = cauchy(0,25),
-                     iter = 20000, chains = 8, control = list(adapt_delta = 0.95))
+# Model 2 - Cauchy (0,25) prior sd and default mean
+Sales_BHM_2 <- baggr(data = Sales, 
+                     model = "rubin", 
+                     pooling = "partial",
+                     prior_hypermean = normal(0,100), 
+                     prior_hypersd = cauchy(0,25),
+                     iter = 20000, 
+                     chains = 8, 
+                     control = list(adapt_delta = 0.95))
 print(Sales_BHM_2)
 
-# model 3 - A narrower Cauchy (0,15) prior and N(0,75) mean 
-Sales_BHM_3 <- baggr(Sales, model = "rubin", pooling = "partial",
-                     prior_hypermean = normal(0,75), prior_hypersd = cauchy(0,15),
-                     iter = 20000, chains = 8, control = list(adapt_delta = 0.95))
+# Model 3 - Cauchy (0,15) prior sd and N(0,75) mean 
+Sales_BHM_3 <- baggr(data = Sales, 
+                     model = "rubin", 
+                     pooling = "partial",
+                     prior_hypermean = normal(0,75), 
+                     prior_hypersd = cauchy(0,15),
+                     iter = 20000, 
+                     chains = 8, 
+                     control = list(adapt_delta = 0.95))
 print(Sales_BHM_3)
 
-#####
-# extracting the BHM to Latex
-class(Sales_BHM_1$fit)
-# the stan fit object contains the hypermean, hypervar, and 
-# shrunk theta parameters for each iteration, as well as the summary figures, which are what we want
+# extracting the BHM to Latex: the stan fit object contains the hypermean, hypervar, and shrunk theta parameters for each iteration, as well as the summary figures, which are what we want
 sales_fit_1_summary <- summary(Sales_BHM_1$fit)
 print(names(sales_fit_1_summary))
 print(sales_fit_1_summary$summary)
 
-# the summary contains the parameter 'eta';
-# it also contains some percentiles and stats for the mean, var, and thetas;
-# we can subset to get only the rows and columns that we want
+# the summary contains the parameter 'eta'; it also contains some percentiles and stats for the mean, var, and thetas; we can subset to get only the rows and columns that we want
 sales_output_matrix_unif <- summary(Sales_BHM_1$fit, pars = c("mu", "tau", "theta_k"))$summary[, c(1,3,4,5,7,8,10)]
 print(sales_output_matrix_unif)
 sales_output_matrix_cauchy1 <- summary(Sales_BHM_2$fit, pars = c("mu", "tau", "theta_k"))$summary[, c(1,3,4,5,7,8,10)]
@@ -79,7 +97,7 @@ print(sales_output_matrix_cauchy1)
 sales_output_matrix_cauchynarrow <- summary(Sales_BHM_3$fit, pars = c("mu", "tau", "theta_k"))$summary[, c(1,3,4,5,7,8,10)]
 print(sales_output_matrix_cauchynarrow)
 
-# convert this stan output matrix to a dataframe
+# convert the stan output matrices to dataframes
 sales_output_matrix_unif <- as.data.frame(sales_output_matrix_unif)
 sales_output_matrix_cauchy1 <- as.data.frame(sales_output_matrix_cauchy1)
 sales_output_matrix_cauchynarrow <- as.data.frame(sales_output_matrix_cauchynarrow)
@@ -104,14 +122,12 @@ sink("sales_all18_BHM_Cauchy_narrow.txt")
 print.xtable(xtable(sales_output_matrix_cauchynarrow))
 sink()
 
-#####
+
 # Pooling and hetero stats
-# note that the pooling factor equals (1 - lambda) from Rubin (1981) - 
-# lambda is the between-group hetero (in tau^2, the hyper-var) relative to total variation incl. sampling se
-# so the pooling factor here is the sampling variation relative to total variation incl. true hetero
+# The pooling factor equals (1 - lambda) from Rubin (1981), where lambda is the between-group heterogeneity (in tau^2, the hyper-var) relative to total variation incl. sampling se. So the pooling factor here is the sampling variation relative to total variation incl. true heterogeneity.
 
 pooling(Sales_BHM_2) # gives the pooling factors for each group separately, based on own s.e.'s
- heterogeneity(Sales_BHM_2) # avg pooling factor measured as explained above
+heterogeneity(Sales_BHM_2) # avg pooling factor measured as explained above
 # I^2 is the 'lambda' pooling factor we're interested in: the between-group hetero (in tau^2, the hyper-var)
 # relative to total variation incl. sampling se.
 # higher the I^2 stat (closer to 1), greater the true hetero.
