@@ -1,16 +1,20 @@
+# Load libraries
 library(dplyr)
 library(tidyr)
 library(haven)
 install.packages("labelled")
 library(labelled)
 
+# Set loc
+## Set path
+
+# Load data
 Pakistan <- read_dta("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/Data for thesis/Business Training Data available/Giné Mansuri Pakistan/dataverse_files/business_visit.dta")
 View(Pakistan)
 
-#### There is some discrepancy between the numbers in the paper, the numbers in the business visit dataset
-#### (the one which has the sales and profit figures), and the follow-up dataset.
+# *** NB: There are some discrepancies between the numbers in the paper, the numbers in the business visit dataset (the one which has the sales and profit figures), and the follow-up dataset ***
 
-# Let's have a look at treatment status
+# Check treatment status
 table(Pakistan$EDT_treat) # 2381 offered biz training, 1854 were not
 table(Pakistan$A_EDT) # 1660 were offered training w/o loan lottery - the treatment group we are interested in
 table(Pakistan$A_EDT, Pakistan$bl_bus_owner)
@@ -23,30 +27,30 @@ table(Pakistan$d_lleligible)
 table(Pak_baseline$bl_bus_owner)
 table(Pak_baseline$female)
 table(Pak_baseline$A_EDT)
-# What's the gender balance? 
+
+# Check gender balance
 table(Pakistan$female) # There are 2359 men and 1876 women
 
-#
-# How many missing entries for profits exist?
-sum(is.na(Pakistan$log_average_month))
-# No sales NAs.
+# Check missing data for profits
+sum(is.na(Pakistan$log_average_month))  #
+# No missing sales data
 
-# Now let's convert the sales and profits variables from natural log to real currency, in new vars.
-# I know the logs are ln base e not base 10 otherwise the earnings would be in the gazillions
+# Convert sales and profits from natural log to real currency (I know the logs are ln base e not base 10 otherwise the earnings would be > trillions)
 Pakistan <- Pakistan %>% mutate(sales_fup = exp(log_average_month_fu),
                                 sales_baseline = exp(log_average_month_bl),
                                 profits_fup = exp(logprofit_revised))
 
 # Drop the observations in the lottery group, incl lottery only and training + lottery
 Pakistan <- filter(Pakistan, L_ttreat == 0)
-# Just checking that we now have a clean control - training treatment distinction. We do.
+
+# Checking that we now have a clean control - training treatment distinction
 table(Pakistan$A_EDT)
 table(Pakistan$B_LL) 
 table(Pakistan$C_EDT_LL) 
 table(Pakistan$L_ttreat)
+# We do have a clean control
 
 # What we want to do is: calculate the mean and sd of sales and profits only for the control group.
-
 # We're splitting the dataset Pakistan by treatment status, and then generating
 # the average and sd of profits and sales, and storing them in a new df:
 Standardisation_vars_Pakistan <- group_by(Pakistan, A_EDT) %>% 
@@ -73,28 +77,28 @@ Pakistan_clean <- Pakistan_clean %>% mutate(Profit_zscore = (profits_fup - avgpr
 
 Pakistan_clean <- Pakistan_clean %>% set_variable_labels(Profit_zscore = NULL, Revenue_zscore = NULL,
                                                          Baseline_Revenue_z = NULL)
-###
-Pakistan_baseline <- filter(Pakistan_clean, post == 0)
-Pakistan_clean <- filter(Pakistan_clean, post == 1)
-View(Pakistan_baseline)
 
-Pakistan_baseline <- Pakistan_baseline %>% select(pid, Baseline_Revenue_z)
+# Only retain post-treatment data, but add baseline revenues as a column
+Pakistan_baseline <- Pakistan_clean %>% 
+  filter(post == 0) %>% 
+  select(pid, Baseline_Revenue_z)
 
-# Now we can drop most columns - they may be used as controls to replicate the regressions, if you want to use
-# the Bandiera et al. method; but if we want to combine the datasets' individual observations in the 
-# Meager (2019) method, the controls won't be the same across datasets so probably droppable.
-Pakistan_clean <- Pakistan_clean %>% inner_join(Pakistan_baseline, by="pid")
-Pakistan_clean <- rename(Pakistan_clean, treatment_indicator = A_EDT)
-Pakistan_clean <- rename(Pakistan_clean, Baseline_Revenue_z = Baseline_Revenue_z.y)
-Pakistan_clean <- Pakistan_clean %>% select(Profit_zscore, Revenue_zscore,
-                                      Baseline_Revenue_z, female, treatment_indicator)
-Pakistan_clean <- Pakistan_clean %>% mutate(urban = 0, group = "Pakistan")
-Pakistan_clean <- Pakistan_clean %>% mutate(Baseline_Profit_z = NA)
-Pakistan_clean <- Pakistan_clean %>% relocate(female, .after = urban)
-Pakistan_clean <- Pakistan_clean %>% relocate(Baseline_Profit_z, .after = Revenue_zscore)
-Pakistan_clean <- Pakistan_clean %>% relocate(treatment_indicator, .before = Profit_zscore)
+Pakistan_clean <- filter(Pakistan_clean, post == 1) %>% 
+  inner_join(Pakistan_baseline, by = "pid")
+
+# rename variables
+Pakistan_clean <- Pakistan_clean %>% rename(treatment_indicator = A_EDT) %>% rename(Baseline_Revenue_z = Baseline_Revenue_z.y)
+
+# clean dataset, add dummies, drop most variables
+Pakistan_clean <- Pakistan_clean %>%
+    mutate(urban = 0, group = "Pakistan", Baseline_Profit_z = NA) %>%
+    relocate(female, .after = urban) %>%
+    relocate(Baseline_Profit_z, .after = Revenue_zscore) %>%
+    relocate(treatment_indicator, .before = Profit_zscore) %>%
+    select(Profit_zscore, Revenue_zscore, Baseline_Revenue_z, female, treatment_indicator, urban, group, Baseline_Profit_z)
+
 table(Pakistan_clean$treatment_indicator)
 View(Pakistan_clean)
 
-#export df
+# export df
 write.table(Pakistan_clean, file = "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Pakistan.csv", sep=",", row.names=FALSE)
