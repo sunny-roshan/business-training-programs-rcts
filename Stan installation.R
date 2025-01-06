@@ -1,4 +1,5 @@
-# Install rstan package and its dependencies
+# Install rstan package and its dependencies, 
+# Needed for Bayesian inference and MCMC simulations
 install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies = TRUE)
 
 # Load rstan and set options (run in each script)
@@ -7,6 +8,7 @@ options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
 # Install and load cmdstanr
+# alternative to rstan
 install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 library(cmdstanr)
 check_cmdstan_toolchain()
