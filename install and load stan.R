@@ -7,6 +7,9 @@ library(rstan)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
+# verify installation
+example(stan_model, package = "rstan", run.dontrun = TRUE)
+
 # Install and load cmdstanr
 # alternative to rstan
 install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
