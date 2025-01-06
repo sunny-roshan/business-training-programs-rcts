@@ -1,24 +1,30 @@
+# Load libraries
 library(dplyr)
 library(tidyr)
 library(haven)
 install.packages("labelled")
 library(labelled)
 
+# Set loc
+## set path
+
+# Load dataset
 RSA <- read_dta("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/Data for thesis/Business Training Data available/Anderson et al South Africa/MS Data Folder -- Pathways to Profits/P2P_dataset.dta")
 View(RSA)
 
-table(RSA$Treatment_FIN)
+# Check treatments and treatment statuses
 table(RSA$Treatment_FIN)
 
+# Keep only financial treatment (?)
 RSA_Fin <- filter(RSA, Treatment_FIN == 0)
 
+# Check missing data for profits and sales
 sum(is.na(RSA_Fin$Profits3_composite_w1))
 sum(is.na(RSA_Fin$Sales5_composite_w1))
 sum(is.na(RSA_Fin$Profits3_composite_w1))
 sum(is.na(RSA_Fin$Sales5_composite_w1))
 
-##### 
-##### Finance treatment now
+# Standardise control group profits and sales
 Standardisation_vars_RSA_Fin <- group_by(RSA_Fin, T_survey_round, Treatment_FIN) %>% 
   summarize(avgprofits = mean(Profits3_composite_w1, na.rm = TRUE), sdprofits = sd(Profits3_composite_w1, na.rm = TRUE),
             avgrevenue = mean(Sales5_composite_w1, na.rm = TRUE), sdrevenue = sd(Sales5_composite_w1, na.rm = TRUE))
@@ -39,31 +45,28 @@ View(RSA_Fin_clean)
 RSA_Fin_clean <- RSA_Fin_clean %>% mutate(Profit_zscore = (Profits3_composite_w1 - avgprofits)/sdprofits,
                                           Revenue_zscore = (Sales5_composite_w1 - avgrevenue)/sdrevenue)
 
-##
-# Now make a cleaner variable:
-# Collapse both follow-up survey rounds into a single follow-up indicator, for higher power;
-# and add the baseline values as a column for each individual rather than a row entry.
+# Cleaner variables:
+# 1. collapse both follow-up survey rounds into a single follow-up indicator, for higher power;
+# 2. add the baseline values as a column for each individual rather than a row entry;
+# 3. drop most controls
 RSA_Fin_clean <- RSA_Fin_clean %>% mutate(fup_indicator = as.numeric(T_survey_round != 1))
 RSA_Fin_baseline <- filter(RSA_Fin_clean, fup_indicator == 0)
 RSA_Fin_clean <- filter(RSA_Fin_clean, fup_indicator == 1)
 
-View(RSA_Fin_baseline)
-RSA_Fin_baseline <- rename(RSA_Fin_baseline, Baseline_Profit_z = Profit_zscore, Baseline_Revenue_z = Revenue_zscore)
-RSA_Fin_baseline <- RSA_Fin_baseline %>% select(N_firm_id, Baseline_Profit_z, Baseline_Revenue_z)
+RSA_Fin_baseline <- RSA_Fin_baseline %>% 
+  rename(Baseline_Profit_z = Profit_zscore, Baseline_Revenue_z = Revenue_zscore) %>% 
+  select(N_firm_id, Baseline_Profit_z, Baseline_Revenue_z)
 
-# Now we can drop most columns - they may be used as controls to replicate the regressions, if you want to use
-# the Bandiera et al. method; but if we want to combine the datasets' individual observations in the 
-# Meager (2019) method, the controls won't be the same across datasets so probably droppable.
-RSA_Fin_clean <- RSA_Fin_clean %>% inner_join(RSA_Fin_baseline, by="N_firm_id")
-RSA_Fin_clean <- rename(RSA_Fin_clean, treatment_indicator = Treatment_FIN, female = Gender)
-RSA_Fin_clean <- RSA_Fin_clean %>% select(treatment_indicator,
-                                          Profit_zscore, Revenue_zscore,
-                                          Baseline_Profit_z, Baseline_Revenue_z,
-                                          female)
-RSA_Fin_clean <- RSA_Fin_clean %>% mutate(urban = 1, group = "RSA Finance")
-RSA_Fin_clean <- RSA_Fin_clean %>% relocate(female, .after = urban)
+# clean and drop most controls
+RSA_Fin_clean <- RSA_Fin_clean %>% 
+  inner_join(RSA_Fin_baseline, by="N_firm_id") %>%
+  rename(treatment_indicator = Treatment_FIN, female = Gender) %>%
+  mutate(urban = 1, group = "RSA Finance") %>%
+  relocate(female, .after = urban) %>%
+  select(treatment_indicator, Profit_zscore, Revenue_zscore, Baseline_Profit_z, Baseline_Revenue_z, female)
+
 table(RSA_Fin_clean$treatment_indicator)
 View(RSA_Fin_clean)
 
-#export df
+# export df
 write.table(RSA_Fin_clean, file = "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/RSA_Finance.csv", sep=",", row.names=FALSE)
