@@ -11,38 +11,11 @@ library(scales)
 install.packages('extraDistr')
 library(extraDistr)
 
-Kenya_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Kenya.csv")
-Nigeria1_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Nigeria1.csv")
-Nigeria2_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Nigeria2.csv")
-Pakistan_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Pakistan.csv")
-RSA_Fin_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/RSA_Finance.csv")
-RSA_Mkt_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/RSA_Market.csv")
-Tanzania_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Tanzania.csv")
+# Set loc
+##
 
-## We have 6 datasets/studies. Since Berge reported separate results, we could 
-## say it is 7 studies.
-Master <- bind_rows(Kenya_clean, Nigeria1_clean, Nigeria2_clean, Pakistan_clean,
-                    RSA_Fin_clean, RSA_Mkt_clean, Tanzania_clean)
-
-View(Master)
-
-## Profits 
-sum(is.na(Master$Profit_zscore)) # 690
-sum(is.na(Master$female)) # 2
-sum(is.na(Master$urban)) #0
-sum(is.na(Master$Revenue_zscore)) # 1164
-Master_noprofna <- Master %>% filter(!is.na(Profit_zscore), !is.na(female))
-sum(is.na(Master_noprofna$Profit_zscore))
-sum(is.na(Master_noprofna$female))
-Master_noprofna <- as.data.frame(Master_noprofna)
-View(Master_noprofna)
-Master_noprofna <- Master_noprofna %>% select(treatment_indicator, Profit_zscore, urban, female, group)
-
-## Sales
-Master_nosalesna <- Master %>% filter(!is.na(Revenue_zscore), !is.na(female), !is.na(urban))
-Master_nosalesna <- as.data.frame(Master_nosalesna)
-Master_nosalesna <- Master_nosalesna %>% select(treatment_indicator, Revenue_zscore, urban, female, group)
-View(Master_nosalesna)
+#Load profits df with no NAs
+#Load sales df with no NAs
 
 Full <- baggr(data = Master_noprofna, model = "rubin_full",
       iter = 15000, chains = 8, control = list(adapt_delta = 0.95),
