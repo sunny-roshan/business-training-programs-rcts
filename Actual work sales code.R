@@ -17,32 +17,11 @@ options(xtable.timestamp = "")
 # Set loc
 setwd("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Sales output")
 
-# define a function that backs out standard errors from frequentist 95% confidence intervals
-compute_se <- function(mean, CI_upperbound, CI_lowerbound) {
-  std_error <- (((CI_upperbound - mean)/1.96) + (mean - CI_lowerbound)/1.96)/2
-  return(std_error)
-}
+# Load Sales summary stats dataset which we manually created
+# *** Load csv file *** #
 
 # First, fit models using summary statistics (effect size and CI/se) only. We have these for 18 studies
 # Later, fit models with covariates for the studies with public datasets
-
-# Manually create df of effect sizes (tau) and std errors:
-group <- c("Avdeenko et al. (2019)", "Anderson and McKenzie (2020)",
-           "Alibhai et al. (2019)", "Brooks et al. (2018)", "Campos et al. (2017)",
-           "Bakhtiar et al. (2021)", "Chong and Velez (2020)", "Anderson et al. (2018) (Finance)",
-           "Anderson et al. (2018) (Marketing)", "Calderon et al. (2020)",
-           "de Mel et al. (2014) (Existing)", "de Mel et al. (2014) (Potential)",
-           "Valdivia (2015)", "Berge et al. (2015) (Males)", "Berge et al. (2015) (Females)",
-           "Giné and Mansuri (2020)", "Drexler et al. (2014) (Accounting)",
-           "Karlan and Valdivia (2011)")
-
-tau <- c(-0.99, 20.73, -0.89, 3.32, 5.59, 62.20, 35.8, 25.32, 64.43, 28.78, -14.11, 38.9, 16.88, 12.98, -0.5, -2.86, -7.8, 1)
-CIupper <- c(20.2, 70.25, 25.46, 18.18, 22.24, 109.86, 76.18, 56.53, 111.03, 61.35, 40.27, 86.96, 38.34, 54.89, 27.7, 14.08, 10.37, 11.4)
-CIlower <- c(-18.45, -28.8, -27.24, -11.53, -11.05, 14.54, -4.58, -5.9, 17.84, 2.8, -68.49, -9.14, -1.25, -17.6, -22.47, -17.28, -26.03, -8.42)
-se <- compute_se(tau, CIupper, CIlower)
-
-Sales <- data.frame(group, tau, se)
-Sales
 
 # Three BHM models using summary stats (without covariates) with different priors for the mean and standard deviation of the effect size:
 # 1: normal N(0,100) mean and wide uniform sd
@@ -351,14 +330,8 @@ mean(full_pool_looic) # 8.77.
 # compare this mean to the partial pooling BHM
 mean(full_pool_looic) - mean(looic) # Lower than BHM: -0.1107446.
 
-##### 
-##### With covariates
-Female_proportion <- c(.683, .49, 1, 1, .53, 1, 1, .44, .44, 1, 1, 1, 1, 0, 1, .49, .9, .96)
-Urban_proportion <- c(.155, 1, 1, 1, 1, NA, NA, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, .712)
-GDP_pc_growth <- c(4, -1.8, 6.5, 2.4, 3.2, 7.2, 8.7, 0.8, 0.8, -6.7, 2.8, 2.8, 0.3, 2.7, 2.7, 2.5, 6, 4.3)
-
-Sales_expanded <- data.frame(group,tau,se,Female_proportion,Urban_proportion, GDP_pc_growth)
-View(Sales_expanded)
+# With covariates
+# *** Load Sales_expanded csv dataset ***
 
 Sales_femalescontrol <- baggr(Sales_expanded, 
                                 outcome = "outcome",
