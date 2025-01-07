@@ -11,29 +11,8 @@ library(scales)
 install.packages('extraDistr')
 library(extraDistr)
 
-########
-# Only summary data, all 16 studies:
-group <- c("Avdeenko et al. (2019)", "Anderson and McKenzie (2020)", "Buvinic et al. (2020)",
-           "Alibhai et al. (2019)", "Brooks et al. (2018)", "Campos et al. (2017)",
-           "Bakhtiar et al. (2021)", "Anderson et al. (2018) (Finance)",
-           "Anderson et al. (2018) (Marketing)", "Bruhn and Zia (2013)", "Calderon et al. (2020)",
-           "de Mel et al. (2014) (Existing)", "de Mel et al. (2014) (Potential)",
-           "Berge et al. (2015) (Males)", "Berge et al. (2015) (Females)",
-           "Giné and Mansuri (2020)")
-
-# function for backing out s.e.s from 95% C.I.'s some of which are asymmetric
-compute_se <- function(mean, CI_upperbound, CI_lowerbound) {
-  s_e <- (((CI_upperbound - mean)/1.96) + (mean - CI_lowerbound)/1.96)/2
-  return(s_e)
-}
-
-tau <- c(-23.89, 21.82, 15.23, 7.21, 6.90, 11.18, 80.48, 40.96, 61.06, -15.02, 23.73, -4.27, 41.68, 13.66, 3.60, -8.06)
-CIupper <- c(12.20, 69.93, 27.12, 16.30, 22.65, 25.06, 125.71, 77.72, 105.22, 32.0, 53.51, 26.31, 82.01, 51.61, 28.88, 9.47) 
-CIlower <- c(-48.37, -26.29, 3.35, -1.88, -8.84, -2.69, 35.23, 4.20, 16.90, -62.05, -0.26, -34.84, 1.34, -14.8, -21.68, -22.77)     
-se <- compute_se(tau,CIupper,CIlower)
-
-Profits <- data.frame(group,tau,se)
-Profits
+######## Swet wd and load profits csv dataset
+# Load Profits
 
 # model 1 - uniform prior variance, only summary data, no covariates
 defaultvarpiorlimit <- 10*sd(tau)
@@ -346,15 +325,7 @@ mean(full_pool_looic) - mean(looic) # = -0.1519265
 
 ##### 
 ##### With covariates
-x<-prepare_ma(microcredit_simplified, outcome = "consumption")
-x
-
-Female_proportion <- c(.683, .49, 1, 1, 1, .53, 1, .44, .44, .35, 1, 1, 1, 0, 1, .49)
-Urban_proportion <- c(.155, 1, 0, 1, 1, 1, N/A, 1, 1, .29, 0, 1, 1, 1, 1, 0)
-GDP_pc_growth <- c(4, -1.8, 3.8, 6.5, 2.4, 3.2, 7.2, 0.8, 0.8, -2.5, -6.7, 2.8, 2.8, 2.7, 2.7, 2.5)
-
-Profits_expanded <- data.frame(group,tau,se,Female_proportion,Urban_proportion, GDP_pc_growth)
-View(Profits_expanded)
+# Load Profits_expanded
 
 Profits_femalescontrol <- baggr(Profits_expanded, 
       outcome = "outcome",
