@@ -5,18 +5,40 @@
 library(dplyr)
 
 # Load cleaned datasets
-Kenya_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Kenya.csv")
-Nigeria1_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Nigeria1.csv")
-Nigeria2_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Nigeria2.csv")
-Pakistan_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Pakistan.csv")
-RSA_Fin_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/RSA_Finance.csv")
-RSA_Mkt_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/RSA_Market.csv")
-Tanzania_clean <- read.csv("/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Tanzania.csv")
+Kenya_clean <- read.csv(
+  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Kenya.csv"
+)
+Nigeria1_clean <- read.csv(
+  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Nigeria1.csv"
+)
+Nigeria2_clean <- read.csv(
+  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Nigeria2.csv"
+)
+Pakistan_clean <- read.csv(
+  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Pakistan.csv"
+)
+RSA_Fin_clean <- read.csv(
+  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/RSA_Finance.csv"
+)
+RSA_Mkt_clean <- read.csv(
+  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/RSA_Market.csv"
+)
+Tanzania_clean <- read.csv(
+  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Tanzania.csv"
+)
 
 # Combine into one df
-Master <- bind_rows(Kenya_clean, Nigeria1_clean, Nigeria2_clean, Pakistan_clean, RSA_Fin_clean, RSA_Mkt_clean, Tanzania_clean)
+Master <- bind_rows(
+  Kenya_clean,
+  Nigeria1_clean,
+  Nigeria2_clean,
+  Pakistan_clean,
+  RSA_Fin_clean,
+  RSA_Mkt_clean,
+  Tanzania_clean
+)
 
-# Check Profits 
+# Check Profits
 sum(is.na(Master$Profit_zscore)) # 690
 sum(is.na(Master$female)) # 2
 sum(is.na(Master$urban)) #0
