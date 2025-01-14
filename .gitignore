@@ -1,5 +1,37 @@
+# RStudio project settings
+.Rproj.user/
 
-.DS_Store
-/.Rproj.user
-.DS_Store
+# R history
+.Rhistory
+
+# R environment file
+.RData
+
+# Temporary files
 *.Rproj
+*.Rout
+*.Rapp.history
+*.Rhistory
+
+# MacOS specific files
+.DS_Store
+
+# .RData files (created by R when saving the workspace)
+.RData
+
+# RStudio addin configuration (if used)
+rstudio_addins.json
+
+# Package-specific temporary files (these may vary depending on the package used)
+*.tar.gz
+*.Rcheck/
+
+# Jupyter notebook checkpoints (if you use R in Jupyter)
+.ipynb_checkpoints/
+
+# VS Code specific files (if you're using VS Code in addition to RStudio)
+.vscode/
+
+# Miscellaneous system files
+Thumbs.db
+ehthumbs.db
