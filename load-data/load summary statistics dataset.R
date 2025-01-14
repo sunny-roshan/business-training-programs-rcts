@@ -1,5 +1,6 @@
 # We need to manually create datasets of the summary statistics and key covariates from the studies in our meta-analysis
 library(dplyr)
+library
 
 # Define a function that backs out standard errors from frequentist 95% confidence intervals
 compute_se <- function(mean, CI_upperbound, CI_lowerbound) {
@@ -37,7 +38,7 @@ Urban_proportion_s <- c(.155, 1, 1, 1, 1, NA, NA, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 
 GDP_pc_growth_s <- c(4, -1.8, 6.5, 2.4, 3.2, 7.2, 8.7, 0.8, 0.8, -6.7, 2.8, 2.8, 0.3, 2.7, 2.7, 2.5, 6, 4.3)
 
 # back out standard errors
-se_s <- compute_se(tau, CIupper, CIlower)
+se_s <- compute_se(tau_s, CIupper_s, CIlower_s)
 
 # Combine into df with and without covariates
 Sales <- data.frame(group_s, tau_s, se_s)
@@ -50,11 +51,11 @@ Sales_expanded <- data.frame(group_s,
 
 # Export
 write.table(Sales,
-            file = "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Sales summary stats.csv",
+            file = here("cleaned-datasets", "Sales summary stats.csv"),
             sep = ",",
             row.names = FALSE)
 write.table(Sales_expanded,
-            file = "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Sales stats with covariates.csv",
+            file = here("cleaned-datasets", "Sales stats with covariates.csv"),
             sep = ",",
             row.names = FALSE)
 
@@ -82,12 +83,12 @@ tau_p <- c(-23.89, 21.82, 15.23, 7.21, 6.90, 11.18, 80.48, 40.96, 61.06, -15.02,
 CIupper_p <- c(12.20, 69.93, 27.12, 16.30, 22.65, 25.06, 125.71, 77.72, 105.22, 32.0, 53.51, 26.31, 82.01, 51.61, 28.88, 9.47) 
 CIlower_p <- c(-48.37, -26.29, 3.35, -1.88, -8.84, -2.69, 35.23, 4.20, 16.90, -62.05, -0.26, -34.84, 1.34, -14.8, -21.68, -22.77)     
 Female_proportion_p <- c(.683, .49, 1, 1, 1, .53, 1, .44, .44, .35, 1, 1, 1, 0, 1, .49)
-Urban_proportion_p <- c(.155, 1, 0, 1, 1, 1, N/A, 1, 1, .29, 0, 1, 1, 1, 1, 0)
+Urban_proportion_p <- c(.155, 1, 0, 1, 1, 1, NA, 1, 1, .29, 0, 1, 1, 1, 1, 0)
 GDP_pc_growth_p <- c(4, -1.8, 3.8, 6.5, 2.4, 3.2, 7.2, 0.8, 0.8, -2.5, -6.7, 2.8, 2.8, 2.7, 2.7, 2.5)
 
 
 # Back out std errors
-se_p <- compute_se(tau, CIupper, CIlower)
+se_p <- compute_se(tau_p, CIupper_p, CIlower_p)
 
 # Combine into df with and without covariates
 Profits <- data.frame(group_p, tau_p, se_p)
@@ -100,10 +101,11 @@ Profits_expanded <- data.frame(group_p,
 
 # Export
 write.table(Profits,
-            file = "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Profits summary stats.csv",
+            file = here("cleaned-datasets", "Profits summary stats.csv"),
             sep = ",",
             row.names = FALSE)
+
 write.table(Profits_expanded,
-            file = "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Profits stats with covariates.csv",
+            file = here("cleaned-datasets", "Profits stats with covariates.csv"),
             sep = ",",
             row.names = FALSE)
