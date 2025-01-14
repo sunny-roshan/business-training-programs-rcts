@@ -1,21 +1,24 @@
+# Load libraries
 library(baggr)
-vignette('baggr')
 library(xtable)
-options(xtable.floating = FALSE)
-options(xtable.timestamp = "")
 library(ggplot2)
 library(rstan)
 library(stargazer)
 library(dplyr)
 library(scales)
-install.packages('extraDistr')
 library(extraDistr)
 
+# Set options
+rm(list = ls())
+options(xtable.floating = FALSE)
+options(xtable.timestamp = "")
+
 # Set wd and load profits csv dataset ----
-# Load Profits
+getwd()
+Profits <- read.csv(here("cleaned-datasets", "Profits summary stats.csv"))
 
 # model 1 - uniform prior variance, only summary data, no covariates
-defaultvarpiorlimit <- 10 * sd(tau)
+defaultvarpiorlimit <- 10 * sd(Profits$tau_p)
 defaultvarpiorlimit
 
 # need to research what adapt_delta does in MCMC
@@ -37,7 +40,7 @@ curve(dhcauchy(x, 50), 0, 100, col = "red", add = TRUE)
 curve(dhcauchy(x, 15), 0, 100, col = "black", add = TRUE)
 curve(dhcauchy(x, 40), 0, 100, col = "orange", add = TRUE)
 
-# changing prior on on hypersd to half-Cauchy(0,25) - better than uniform (less weight on extreme hetero)
+# Second prior: changing prior on on hypersd to half-Cauchy(0,25) - better than uniform (less weight on extreme hetero)
 Profits_BHM_2 <- baggr(
   data = Profits,
   model = "rubin",
@@ -50,7 +53,7 @@ Profits_BHM_2 <- baggr(
 )
 print(Profits_BHM_2)
 
-# what if I use an even flatter half Cauchy(0,40)?
+# Third prior: an even flatter half Cauchy(0,40)
 Profits_BHM_3 <- baggr(
   data = Profits,
   model = "rubin",
@@ -64,14 +67,14 @@ Profits_BHM_3 <- baggr(
 print(Profits_BHM_3)
 
 
-# understanding the baggr object so we can extract the model table ##
+# understanding the baggr object so we can extract the model table
 summary(Profits_BHM_2)
+
 # the stan model is the object 'fit' - extract it
 Profits_BHM$fit
 class(Profits_BHM$fit)
 
-# the stan fit object contains the hypermean, hypervar, and
-# shrunk tau parameters for each iteration; as well as the summary figures, which are what we want
+# the stan fit object contains the hypermean, hypervar, and shrunk tau parameters for each iteration; as well as the summary figures, which are what we want
 profits_fit_unif_summary <- summary(Profits_BHM$fit)
 print(names(profits_fit_unif_summary))
 print(profits_fit_unif_summary$summary)
@@ -81,21 +84,25 @@ print(profits_fit_unif_summary$summary)
 # we can subset to get only the rows and columns that we want
 profits_output_matrix_unif <- summary(Profits_BHM$fit, pars = c("mu", "tau", "theta_k"))$summary[, c(1, 3, 4, 5, 7, 8, 10)]
 print(profits_output_matrix_unif)
+
 profits_output_matrix_cauchy1 <- summary(Profits_BHM_2$fit, pars = c("mu", "tau", "theta_k"))$summary[, c(1, 3, 4, 5, 7, 8, 10)]
 print(profits_output_matrix_cauchy1)
+
 profits_output_matrix_cauchy2 <- summary(Profits_BHM_3$fit, pars = c("mu", "tau", "theta_k"))$summary[, c(1, 3, 4, 5, 7, 8, 10)]
 print(profits_output_matrix_cauchy2)
 
 # convert this stan output matrix to a dataframe
 prof_df_unif <- as.data.frame(profits_output_matrix_unif)
 prof_df_unif
+
 prof_df_cauchy1 <- as.data.frame(profits_output_matrix_cauchy1)
 prof_df_cauchy1
+
 prof_df_cauchy2 <- as.data.frame(profits_output_matrix_cauchy2)
 prof_df_cauchy2
 
 # change the rownames from mu, tau, tau[1], etc. to the study names
-tab_lab <- c("Hypermean (mu)", "Hyper-sd (tau)", group)
+tab_lab <- c("Hypermean (mu)", "Hyper-sd (tau)", Profits$group_p)
 rownames(prof_df_unif) <- tab_lab
 rownames(prof_df_cauchy1) <- tab_lab
 rownames(prof_df_cauchy2) <- tab_lab
@@ -104,9 +111,7 @@ prof_df_cauchy1
 prof_df_cauchy2
 
 # extract prof_df_unif and prof_df_cauchy1 and prof_df_cauchy2 to Latex tables
-setwd(
-  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Profits output"
-)
+setwd(here("bayesian-models", "outputs"))
 
 sink("profits_all16_Unif_BHM.txt")
 print.xtable(xtable(prof_df_unif))
@@ -130,9 +135,10 @@ sink()
 pooling <- Profits_BHM_2$pooling_metric
 pool2 <- as.data.frame(pooling)
 pool2
-#
+
 pooling(Profits_BHM_2) # gives the pooling factors for each group separately, based on own s.e.'s
 heterogeneity(Profits_BHM_2) # avg 'pooling factor' measured as explained above
+
 # I^2 is the 'lambda' pooling factor we're interested in: the between-group hetero (in tau^2, the hyper-var)
 # relative to total variation incl. sampling se
 # higher the I^2 stat (closer to 1), greater the true hetero.
@@ -150,11 +156,7 @@ sink("profits_heterogeneity_poolfactor.txt")
 print.xtable(xtable(avg_pool_factors))
 sink()
 
-#####
-# Graphical output
-# If there is a ggplot error, add + theme(text=element_text(family="Arial", size=14))
-# If you want to centre the plot title, add + theme(plot.title = element_text(hjust = 0.5))
-
+## Graphical output ----
 # (forest) plots of posterior effects, ordered by effect size, with hypermean added
 ## Uniform prior
 pdf(file = "Posterior intervals 1 ordered.pdf",
@@ -275,7 +277,6 @@ x <- effect_draw(Profits_BHM, n = 1e4)
 hist(x, breaks = 900, xlim = c(-10, 30))
 
 # First comparison: comparing Bayesian FE, no-pooling, BHM with cauchy 1 prior (= Profits_BHM_2):
-# I DON'T KNOW WHAT POSTERIOR PREDICTIVE EFFECTS ARE - WHY ARE THEY SO WIDE??
 # For Bayesian full pooling and no-pooling there is no prior variance specification.
 
 fullpoolcomparo <- baggr(
@@ -313,6 +314,7 @@ summary(BHM_compare)
 BHM_compare_df <- rbind(BHM_compare$mean_trt,
                         BHM_compare$sd_trt,
                         BHM_compare$posteriorpd_trt)
+
 # drop the no-pooling since that means there are no aggregate estimates:
 BHM_compare_df <- BHM_compare_df[c(2, 3, 5, 6, 8, 9), ]
 BHM_compare_df
@@ -326,14 +328,6 @@ rownames(BHM_compare_df) <- c(
 )
 BHM_compare_df
 
-## Haven't exported it because doesn't seem important to have it in a table;
-## the more interesting comparison is in graphical form
-#export this comparison table to Latex
-#sink("Comparison of Cauchy BHM and Full Pooling.txt")
-#print.xtable(xtable(BHM_compare_df))
-#sink()
-
-# unable to change the x-axis increments
 pdf(file = "Treatment effect distribution - Compare pooling assmptions.pdf",
     width = 8,
     height = 6)
@@ -440,9 +434,8 @@ full_pool_looic <- -2 * full_pool_crossval$df$lpd
 mean(full_pool_looic) # = 9.39. Lower than BHM. Ref. Gelman again.
 mean(full_pool_looic) - mean(looic) # = -0.1519265
 
-#####
-##### With covariates
-# Load Profits_expanded
+## With covariates ----
+Profits_expanded <- read.csv(here("cleaned-datasets", "Profits stats with covariates.csv"))
 
 Profits_femalescontrol <- baggr(
   Profits_expanded,
@@ -459,8 +452,6 @@ Profits_femalescontrol <- baggr(
   control = list(adapt_delta = 0.95)
 )
 print(Profits_femalescontrol)
-
-print(Profits_BHM_2)
 
 Profits_gdpcontrol <- baggr(
   Profits_expanded,
@@ -554,7 +545,7 @@ profits_output_matrix_3controls <- as.data.frame(profits_output_matrix_3controls
 profits_output_matrix_3controls
 
 # change the rownames from mu, tau, tau[1], etc. to the study names
-group_3control <- group[-7]
+group_3control <- Profits_expanded$group_p[-7]
 tab_lab_urban <- c("Hypermean (mu)", "Hyper-sd (tau)", group_3control)
 rownames(profits_output_matrix_female) <- tab_lab
 rownames(profits_output_matrix_gdp) <- tab_lab
@@ -566,11 +557,6 @@ profits_output_matrix_urban
 profits_output_matrix_3controls
 
 # extract profits_output_matrix_female, profits_output_matrix_gdp,
-# profits_output_matrix_urban, and profits_output_matrix_3controls to Latex tables
-setwd(
-  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Profits output"
-)
-
 sink("profits_female_BHM.txt")
 print.xtable(xtable(profits_output_matrix_female))
 sink()
@@ -587,7 +573,6 @@ sink("profits_3controls_BHM.txt")
 print.xtable(xtable(profits_output_matrix_3controls))
 sink()
 
-##
 ## Pooling stat - I^2 (=lambda from your methodology)
 pf_female <- pooling(Profits_femalescontrol, type = "total", metric = "isq")
 pf_gdp <- pooling(Profits_gdpcontrol, type = "total", metric = "isq")
@@ -603,10 +588,7 @@ sink("profits_heterogeneity_poolfactor_covariates.txt")
 print.xtable(xtable(avg_pool_factors_covariates))
 sink()
 
-##
-## Graphical output
-# If there is a ggplot error, add + theme(text=element_text(family="Arial", size=14))
-# If you want to centre the plot title, add + theme(plot.title = element_text(hjust = 0.5))
+## Graphical output ----
 forest_plot(Profits_femalescontrol, show = "both")
 
 plot(Profits_3controls,
@@ -663,16 +645,7 @@ print.xtable(xtable(Profits_3controls_crossval_output))
 sink()
 
 
-##########################################################
-### NOW WITH ONLY THE DATASETS THAT YOU HAVE ACCESS TO ###
-# subsetting the full df using dplyr
-
-# Save all output to this folder, not the overall R folder, for cleanliness
-getwd()
-setwd(
-  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Graphical output/Profits"
-)
-Profits
+# Now with only the datasets we have full access to ----
 Profits_Data <- filter(
   Profits,
   group == "Gine and Mansuri 2020" |
@@ -719,6 +692,7 @@ print(Profits_BHM_2_Data8)
 profits_fit_1_Data8 <- Profits_BHM_Data8$fit
 profits_fit_2_Data8 <- Profits_BHM_2_Data8$fit
 class(profits_fit_1_Data8)
+
 # the stan fit object contains the hypermean, hypervar, and
 # shrunk tau parameters for each iteration, as well as the summary figures, which are what we want
 profits_fit_1_Data8_summary <- summary(profits_fit_1_Data8)
@@ -770,7 +744,6 @@ pooling_2_Data8 <- Profits_BHM_2_Data8$pooling_metric
 poolfactors_1_Data8 <- as.data.frame(pooling_1_Data8)
 poolfactors_2_Data8 <- as.data.frame(pooling_2_Data8)
 
-#
 pooling(Profits_BHM_2_Data8) # gives the pooling factors for each group separately, based on own s.e.'s
 avg_lambda_Data8 <- heterogeneity(Profits_BHM_2_Data8) # avg pooling factor
 avg_Isq_Data8 <- pooling(Profits_BHM_2_Data8, type = "total", metric = "isq") # I^2, measure of hetero, = (1 - pooling factor)
@@ -785,16 +758,7 @@ sink("profits_hetero_Data8_CauchyBHM.txt")
 print.xtable(xtable(hetero_table_Data8))
 sink()
 
-
-# Graphical output
-# Change wd to sub-folder for these plots with only 8 datasets:
-setwd(
-  "/Users/sunny/Library/CloudStorage/OneDrive-Personal/Documents/MPhil/Thesis/Thesis/R/Graphical output/Profits Data 8"
-)
-
-# If there is a ggplot error, add + theme(text=element_text(family="Arial", size=14))
-# If you want to centre the plot title, add + theme(plot.title = element_text(hjust = 0.5))
-
+## Graphical output ----
 # (forest) plots of posterior effects
 pdf(file = "Posterior intervals.pdf",
     width = 8,
@@ -846,9 +810,7 @@ dev.off()
 # random draws from posterior tau distribution
 effect_draw(Profits_BHM_2_Data8, n = 20)
 
-##
-# First comparison: comparing Bayesian FE, no-pooling, BHM with default priors (= Profits_BHM):
-# I DON'T KNOW WHAT POSTERIOR PREDICTIVE EFFECTS ARE - WHY ARE THEY SO WIDE??
+# Comparison: comparing Bayesian FE, no-pooling, BHM with default priors (= Profits_BHM) ----
 # For Bayesian full pooling and no-pooling there is no prior variance specification.
 
 fullpoolcomparo_Data8 <- baggr(
@@ -885,6 +847,7 @@ BHM_compare_Data8_df <- rbind(
   BHM_compare_Data8$sd_trt,
   BHM_compare_Data8$posteriorpd_trt
 )
+
 # drop the no-pooling since that means there are no aggregate estimates:
 BHM_compare_Data8_df <- BHM_compare_Data8_df[c(2, 3, 5, 6, 8, 9), ]
 BHM_compare_Data8_df
@@ -904,14 +867,12 @@ print.xtable(xtable(BHM_compare_Data8_df))
 sink()
 
 # graphical comparison of full, partial, and no pooling modelling assumptions;
-# unable to change the x-axis increments:
 pdf(file = "Treatment effect distribution - Compare pooling assmptions.pdf",
     width = 8,
     height = 6)
 plot(BHM_compare_Data8) + ggtitle("8 sites: Model Comparison") +
   theme(plot.title = element_text(hjust = 0.35))
 dev.off()
-#
 
 # Second comparison: compare BHM with default priors to Cauchy variance prior and longer chains/iterations
 BHM_compare_Data8_2 <- baggr_compare("Default priors" = Profits_BHM_Data8,
@@ -923,6 +884,7 @@ BHM_compare_Data8_2_df <- rbind(
   BHM_compare_Data8_2$sd_trt,
   BHM_compare_Data8_2$posteriorpd_trt
 )
+
 rownames(BHM_compare_Data8_2_df) <- c(
   "Default Model: Mean",
   "Cauchy Prior: Mean",
@@ -931,6 +893,7 @@ rownames(BHM_compare_Data8_2_df) <- c(
   "Default Model: Posterior Predictive Effect",
   "Cauchy Prior: Posterior Predictive Effect"
 )
+
 BHM_compare_Data8_2_df
 sink("Comparison of Default and Cauchy Profit BHM.txt")
 print.xtable(xtable(BHM_compare_Data8_2_df))
@@ -956,7 +919,6 @@ effect_plot("Default priors" = Profits_BHM_Data8, "Cauchy prior" = Profits_BHM_2
   scale_x_continuous(breaks = scales::pretty_breaks(n = 20)) +
   theme(plot.title = element_text(hjust = 0.5))
 dev.off()
-#
 
 # Cross-validation - how each group affects the output; how the model predicts the left-out groups
 BHM_crossval_Data8 <- loocv(
